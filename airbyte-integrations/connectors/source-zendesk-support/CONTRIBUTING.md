@@ -26,3 +26,9 @@ Uses a two-step approach: first queries `GET /tickets/cursor.json` to get update
 Several streams (`ticket_forms`, `account_attributes`, `attribute_definitions`) are commented out in the manifest because they require Zendesk Enterprise plans and the CDK does not yet support `ConditionalStreams` based on API endpoint availability. The `ticket_forms` stream definition exists but will FAIL with a descriptive error on 403/404 rather than being silently skipped.
 
 **Why this matters:** These streams cannot be enabled without CDK changes to support conditional stream availability. If a user on an Enterprise plan expects these streams, they will not appear in the catalog at all despite the stream definitions existing in the manifest.
+
+## 4. Ticket Events Uses Generated Export Timestamp Semantics
+
+The `ticket_events` stream uses Zendesk's [Incremental Ticket Event Export](https://developer.zendesk.com/api-reference/ticketing/ticket-management/incremental_exports/#incremental-ticket-event-export) (`GET /api/v2/incremental/ticket_events.json?start_time={unix_time}`). Zendesk's time-based exports paginate and filter using generated export timestamp semantics, so responses can include duplicate records across pages and records whose `timestamp` or `created_at` values are older than the requested `start_time`.
+
+**Why this matters:** Do not add client-side filtering that drops ticket events older than the requested `start_time`. Zendesk recommends deduplicating ticket events by `id` and `created_at`.

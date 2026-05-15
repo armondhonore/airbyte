@@ -146,6 +146,7 @@ The Zendesk Support source connector supports the following streams:
 - [Ticket Activities](https://developer.zendesk.com/api-reference/ticketing/tickets/activity_stream/#list-activities) \(Incremental\)
 - [Ticket Audits](https://developer.zendesk.com/rest_api/docs/support/ticket_audits) \(Client-Side Incremental\)
 - [Ticket Comments](https://developer.zendesk.com/api-reference/ticketing/ticket-management/incremental_exports/#incremental-ticket-event-export) \(Incremental\)
+- [Ticket Events](https://developer.zendesk.com/api-reference/ticketing/ticket-management/incremental_exports/#incremental-ticket-event-export) \(Incremental\)
 - [Ticket Fields](https://developer.zendesk.com/rest_api/docs/support/ticket_fields) \(Incremental\)
 - [Ticket Forms](https://developer.zendesk.com/rest_api/docs/support/ticket_forms) \(Incremental\) \(Enterprise only\)
 - [Ticket Metrics](https://developer.zendesk.com/rest_api/docs/support/ticket_metrics) \(Incremental\)
@@ -197,11 +198,17 @@ Zendesk applies [rate limits](https://developer.zendesk.com/api-reference/introd
 
 The connector's **Number of concurrent threads** setting (default: 3) controls how many streams sync in parallel. If your plan supports higher rate limits, increase this value for faster syncs. The maximum is 40.
 
-Zendesk's [incremental export endpoints](https://developer.zendesk.com/api-reference/ticketing/ticket-management/incremental_exports/#rate-limits) have a stricter rate limit of 10 requests per minute, regardless of plan tier. This applies to the `ticket_comments`, `ticket_metric_events`, `users`, and `organizations` streams that use incremental exports. The `tickets` stream uses the [Export Search Results](https://developer.zendesk.com/api-reference/ticketing/ticket-management/search/#export-search-results) endpoint, which has a separate rate limit of 100 requests per minute. The `deleted_tickets` stream has a rate limit of 10 requests per minute. The connector includes a built-in API budget that automatically throttles requests to stay within these limits.
+Zendesk's [incremental export endpoints](https://developer.zendesk.com/api-reference/ticketing/ticket-management/incremental_exports/#rate-limits) have a stricter rate limit of 10 requests per minute, regardless of plan tier. This applies to the `ticket_comments`, `ticket_events`, `ticket_metric_events`, `users`, and `organizations` streams that use incremental exports. The `tickets` stream uses the [Export Search Results](https://developer.zendesk.com/api-reference/ticketing/ticket-management/search/#export-search-results) endpoint, which has a separate rate limit of 100 requests per minute. The `deleted_tickets` stream has a rate limit of 10 requests per minute. The connector includes a built-in API budget that automatically throttles requests to stay within these limits.
 
 If the connector receives a 429 (Too Many Requests) response, it respects the `Retry-After` header and waits before retrying. The `ticket_comments` stream also retries on 504 (Gateway Timeout) errors with exponential backoff, which can occur on large Zendesk instances.
 
 The connector should not run into Zendesk API limitations under normal usage. [Create an issue](https://github.com/airbytehq/airbyte/issues) if you see any rate limit issues that are not automatically retried successfully.
+
+### Ticket Events cursor behavior
+
+The `ticket_events` stream uses Zendesk's Incremental Ticket Event Export endpoint. Zendesk's time-based incremental exports can return duplicate records across pages, and Zendesk recommends deduplicating ticket events by `id` and `created_at`.
+
+This endpoint filters pages using Zendesk's generated export timestamp semantics. Returned ticket events can have `timestamp` or `created_at` values older than the requested `start_time`, especially when Zendesk regenerates events for archived or deleted tickets.
 
 #### Search index delay
 
@@ -220,6 +227,7 @@ The `tickets` stream uses Zendesk's [Export Search Results](https://developer.ze
 
 | Version     | Date       | Pull Request                                             | Subject                                                                                                                                                                                                                            |
 |:------------|:-----------|:---------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 5.3.0-rc.1 | 2026-05-15 | [TBD](https://github.com/airbytehq/airbyte/pull/TBD) | Add the `ticket_events` stream for Zendesk's Incremental Ticket Event Export endpoint |
 | 5.2.7-rc.4 | 2026-05-07 | [77857](https://github.com/airbytehq/airbyte/pull/77857) | Step default concurrency back from 5 to 4 while keeping the endpoint-specific HTTP API budget LIVE (incremental 10/min, search/export 100/min, deleted_tickets 10/min) |
 | 5.2.7-rc.3 | 2026-05-05 | [77784](https://github.com/airbytehq/airbyte/pull/77784) | Restore the endpoint-specific HTTP API budget from 5.2.6 (incremental 10/min, search/export 100/min, deleted_tickets 10/min) and remove the `subscription_tier` config field; keep default concurrency at 5 |
 | 5.2.7-rc.2 | 2026-04-28 | [77548](https://github.com/airbytehq/airbyte/pull/77548) | Activate the tier-aware HTTP API budget driven by `subscription_tier` and raise default concurrency from 4 to 5 |
