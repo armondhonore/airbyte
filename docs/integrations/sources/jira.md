@@ -71,7 +71,7 @@ To create a Service Account API token:
 7. Add the required scopes. You can paste the full comma-separated scope list into scope search to filter the list.
 8. Select the scopes, click **Next**, and create the token.
 
-Service Account API tokens use the same Jira OAuth scopes as OAuth 2.0 credentials. Select these scopes when creating the token:
+Service Account API tokens require the Jira API scopes used by the connector. Select these Jira scopes when creating the token:
 
 ```text
 read:jira-work
@@ -87,7 +87,6 @@ read:webhook:jira
 read:project-category:jira
 read:screenable-field:jira
 read:screen-field:jira
-offline_access
 read:board-scope:jira-software
 read:project:jira
 read:sprint:jira-software
@@ -112,10 +111,10 @@ manage:jira-configuration
 You can paste this comma-separated scope list into Atlassian's scope search:
 
 ```text
-read:jira-work,read:jql:jira,read:group:jira,read:project-role:jira,read:issue-details:jira,read:status:jira,read:jira-user,read:user:jira,read:avatar:jira,read:webhook:jira,read:project-category:jira,read:screenable-field:jira,read:screen-field:jira,offline_access,read:board-scope:jira-software,read:project:jira,read:sprint:jira-software,read:application-role:jira,read:field-configuration:jira,read:notification-scheme:jira,read:issue-security-scheme:jira,read:issue-security-level:jira,read:issue-type-scheme:jira,read:issue-type-screen-scheme:jira,read:permission-scheme:jira,read:screen:jira,read:screen-scheme:jira,read:screen-tab:jira,read:workflow:jira,read:workflow-scheme:jira,read:project.email:jira,read:custom-field-contextual-configuration:jira,manage:jira-configuration
+read:jira-work,read:jql:jira,read:group:jira,read:project-role:jira,read:issue-details:jira,read:status:jira,read:jira-user,read:user:jira,read:avatar:jira,read:webhook:jira,read:project-category:jira,read:screenable-field:jira,read:screen-field:jira,read:board-scope:jira-software,read:project:jira,read:sprint:jira-software,read:application-role:jira,read:field-configuration:jira,read:notification-scheme:jira,read:issue-security-scheme:jira,read:issue-security-level:jira,read:issue-type-scheme:jira,read:issue-type-screen-scheme:jira,read:permission-scheme:jira,read:screen:jira,read:screen-scheme:jira,read:screen-tab:jira,read:workflow:jira,read:workflow-scheme:jira,read:project.email:jira,read:custom-field-contextual-configuration:jira,manage:jira-configuration
 ```
 
-The service account must also have Jira app access and the project permissions required for the streams you sync. To sync all workflow records, the service account needs the **Administer Jira** global permission.
+The service account must also have Jira app access and the project permissions required for the streams you sync. To sync all workflow records, the service account needs the **Administer Jira** global permission. The OAuth-only `offline_access` scope isn't required for Service Account tokens.
 
 ## Supported sync modes
 
@@ -247,7 +246,7 @@ The connector uses these configuration fields for programmatic setup with PyAirb
 
 | Version    | Date       | Pull Request                                               | Subject                                                                                                                                                                |
 |:-----------|:-----------|:-----------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 5.1.0 | 2026-05-20 | [78130](https://github.com/airbytehq/airbyte/pull/78130) | Add Service Account authentication support |
+| 5.1.0 | 2026-05-21 | [78130](https://github.com/airbytehq/airbyte/pull/78130) | Add Service Account authentication support |
 | 5.0.0 | 2026-05-20 | [70448](https://github.com/airbytehq/airbyte/pull/70448) | Migrate the `workflows` stream from the deprecated `/rest/api/3/workflow/search` endpoint to its replacement `/rest/api/3/workflows/search`. Primary key changes from `[entityId, name]` to `[id]`, and the record schema is updated to match the new endpoint. |
 | 4.4.1 | 2026-05-14 | [78088](https://github.com/airbytehq/airbyte/pull/78088) | Fix domain validation regression: auto-normalize domains with https:// prefix or trailing slashes |
 | 4.4.0 | 2026-05-11 | [76067](https://github.com/airbytehq/airbyte/pull/76067) | Add OAuth 2.0 authentication support with config migration |
