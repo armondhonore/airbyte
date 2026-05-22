@@ -1,9 +1,8 @@
 # BigQuery
 
-Setting up the BigQuery destination connector involves setting up the data loading method and configuring the BigQuery destination connector
-using the Airbyte UI.
-
-This page guides you through setting up the BigQuery destination connector.
+Use the BigQuery destination connector to load Airbyte data into Google BigQuery. This page
+explains the required Google Cloud resources, loading methods, connector settings, and
+BigQuery-specific behavior.
 
 ## Prerequisites
 
@@ -13,19 +12,20 @@ This page guides you through setting up the BigQuery destination connector.
   version `v0.40.0-alpha` or newer and upgrade your BigQuery connector to version `1.1.14` or newer
 - [A Google Cloud project with BigQuery enabled](https://cloud.google.com/bigquery/docs/quickstarts/query-public-dataset-console)
 - [A BigQuery dataset](https://cloud.google.com/bigquery/docs/quickstarts/quickstart-web-ui#create_a_dataset)
-  to sync data to.
+  to sync data to, or permission for Airbyte to create datasets in your Google Cloud project.
 
   **Note:** Queries written in BigQuery can only reference datasets in the same physical location.
   If you plan on combining the data that Airbyte syncs with data from other datasets in your
   queries, create the datasets in the same location on Google Cloud. For more information, read
   [Introduction to Datasets](https://cloud.google.com/bigquery/docs/datasets-intro)
 
-- (Required for Airbyte Cloud; Optional for Airbyte Open Source) A Google Cloud
-  [Service Account](https://cloud.google.com/iam/docs/service-accounts) with the
+- (Required for Airbyte Cloud; optional for Airbyte Open Source) A Google Cloud
+  [service account](https://cloud.google.com/iam/docs/service-accounts) with the
   [`BigQuery User`](https://cloud.google.com/bigquery/docs/access-control#bigquery) and
-  [`BigQuery Data Editor`](https://cloud.google.com/bigquery/docs/access-control#bigquery) roles and
-  the
-  [Service Account Key in JSON format](https://cloud.google.com/iam/docs/creating-managing-service-account-keys).
+  [`BigQuery Data Editor`](https://cloud.google.com/bigquery/docs/access-control#bigquery) roles.
+  The connector creates datasets when needed, creates and updates tables, and runs load and query
+  jobs. If you don't use default Google credentials, create a
+  [service account key in JSON format](https://cloud.google.com/iam/docs/creating-managing-service-account-keys).
 - If you're using Airbyte Cloud and this destination uses IP-based access controls, add
   Airbyte's [IP addresses](/platform/operating-airbyte/ip-allowlist) to your allowlist.
 
@@ -35,11 +35,15 @@ This page guides you through setting up the BigQuery destination connector.
 
 #### Using Batched Standard Inserts
 
-You can use the BigQuery driver's built-in conversion to take `INSERT` statements and convert that to file uploads which are then loaded into BigQuery in batches. This is the simplest way to load data into BigQuery in a performant way. These staging files are managed by BigQuery and deleted automatically after the load is complete.
+Use Batched Standard Inserts to let the BigQuery driver convert large `INSERT` statements into file
+uploads that BigQuery loads in batches. This is the simplest way to load data into BigQuery
+efficiently. BigQuery manages and automatically deletes these staging files after the load
+completes.
 
 #### Using a Google Cloud Storage bucket
 
-If you want more control of how and where your staging files are stored, you can opt to use a GCS bucket.
+If you want more control of how and where your staging files are stored, you can opt to use a GCS
+bucket.
 
 To use a Google Cloud Storage bucket:
 
@@ -49,7 +53,7 @@ To use a Google Cloud Storage bucket:
 2. [Create an HMAC key and access ID](https://cloud.google.com/storage/docs/authentication/managing-hmackeys#create).
 3. Grant the
    [`Storage Object Admin` role](https://cloud.google.com/storage/docs/access-control/iam-roles#standard-roles)
-   to the Google Cloud [Service Account](https://cloud.google.com/iam/docs/service-accounts). This
+   to the Google Cloud [service account](https://cloud.google.com/iam/docs/service-accounts). This
    must be the same service account as the one you configure for BigQuery access in the
    [BigQuery connector setup step](#step-2-set-up-the-bigquery-connector).
 4. Make sure your Cloud Storage bucket is accessible from the machine running Airbyte. The easiest
@@ -82,29 +86,17 @@ You cannot change the location later.
    [GCS Staging](#using-a-google-cloud-storage-bucket).
 9. For **Service Account Key JSON (Required for cloud, optional for open-source)**, enter the Google
    Cloud
-   [Service Account Key in JSON format](https://cloud.google.com/iam/docs/creating-managing-service-account-keys).
+   [service account key in JSON format](https://cloud.google.com/iam/docs/creating-managing-service-account-keys).
 
 :::note
-Be sure to copy all contents in the Account Key JSON file including the brackets.
+Be sure to copy all contents in the service account key JSON file, including the braces.
 :::
 
-11. For **Transformation Query Run Type (Optional)**, select **interactive** to have
-    [BigQuery run interactive query jobs](https://cloud.google.com/bigquery/docs/running-queries#queries)
-    or **batch** to have
-    [BigQuery run batch queries](https://cloud.google.com/bigquery/docs/running-queries#batch).
-
-:::note
-Interactive queries are executed as soon as possible and count towards daily concurrent
-quotas and limits, while batch queries are executed as soon as idle resources are available in
-the BigQuery shared resource pool. If BigQuery hasn't started the query within 24 hours,
-BigQuery changes the job priority to interactive. Batch queries don't count towards your
-concurrent rate limit, making it easier to start many queries at once.
-:::
-
-11. For **Google BigQuery Client Chunk Size (Optional)**, use the default value of 15 MiB. Later, if
-    you see networking or memory management problems with the sync (specifically on the
-    destination), try decreasing the chunk size. In that case, the sync will be slower but more
-    likely to succeed.
+10. For **CDC deletion mode**, choose how the destination handles delete records from CDC sources.
+    **Hard delete** propagates source deletes to the destination table. **Soft delete** keeps the
+    row and records the delete marker.
+11. Optional: expand **Advanced** to configure **Legacy raw tables** or **Airbyte Internal Table
+    Dataset Name**. Enable **Legacy raw tables** only if you need the pre-3.0 raw table format.
 
 ## Supported sync modes
 
@@ -193,8 +185,8 @@ The service account does not have the proper permissions.
 - Make sure the BigQuery service account has `BigQuery User` and `BigQuery Data Editor` roles or
   equivalent permissions as those two roles.
 - If the GCS staging mode is selected, ensure the BigQuery service account has the right permissions
-  to the GCS bucket and path or the `Cloud Storage Admin` role, which includes a superset of the
-  required permissions.
+  to the GCS bucket and path or the `Storage Object Admin` role, which includes the required object
+  permissions.
 
 The HMAC key is wrong.
 
@@ -214,8 +206,6 @@ If your sync fails with `BigQueryException: 400 Bad Request` and the message
     headers on requests to `bigquery.googleapis.com`.
   - Verify the service account key has not been rotated or revoked since the connection was
     configured.
-  - Try reducing the **Google BigQuery Client Chunk Size** from the default 15 MiB to a
-    smaller value (for example, 5 MiB).
   - Try reducing concurrent syncs to your BigQuery instance or table. Contention is a
     possible contributing factor.
 
@@ -243,7 +233,65 @@ tutorials:
 
 ## Namespace support
 
-This destination supports [namespaces](https://docs.airbyte.com/platform/using-airbyte/core-concepts/namespaces). The namespace maps to a BigQuery dataset.
+This destination supports
+[namespaces](https://docs.airbyte.com/platform/using-airbyte/core-concepts/namespaces). The
+namespace maps to a BigQuery dataset.
+
+## Reference
+
+Use the following field names and values when you configure this destination with PyAirbyte,
+Terraform, or the Airbyte API.
+
+### Required fields
+
+| Field | Description |
+| :--- | :--- |
+| `project_id` | Google Cloud project ID for the project that contains the target BigQuery dataset. |
+| `dataset_location` | BigQuery dataset location. Use one of the locations shown in the Airbyte UI, such as `US`, `EU`, or a supported regional location like `us-east1`. |
+| `dataset_id` | Default BigQuery dataset ID. If the source stream doesn't specify a namespace, Airbyte writes tables to this dataset. |
+
+### Optional fields
+
+| Field | Description |
+| :--- | :--- |
+| `credentials_json` | Contents of the Google Cloud service account key JSON file. Required in Airbyte Cloud. Optional in Airbyte Open Source when the worker can use default Google credentials. |
+| `cdc_deletion_mode` | How to handle delete records from CDC sources. Valid values are `Hard delete` and `Soft delete`. Defaults to `Hard delete`. |
+| `disable_type_dedupe` | Set to `true` to write the legacy raw table format instead of final direct-load tables. Defaults to `false`. |
+| `raw_data_dataset` | Dataset for Airbyte internal tables. In legacy raw tables mode, raw tables are stored in this dataset. Defaults to `airbyte_internal`. |
+
+### Loading method examples
+
+For Batched Standard Inserts, set `loading_method.method` to `Standard`:
+
+```json
+{
+  "loading_method": {
+    "method": "Standard"
+  }
+}
+```
+
+For GCS Staging, set `loading_method.method` to `GCS Staging` and provide the bucket, path, and
+HMAC key credentials:
+
+```json
+{
+  "loading_method": {
+    "method": "GCS Staging",
+    "credential": {
+      "credential_type": "HMAC_KEY",
+      "hmac_key_access_id": "<your-hmac-access-id>",
+      "hmac_key_secret": "<your-hmac-secret>"
+    },
+    "gcs_bucket_name": "<bucket-name>",
+    "gcs_bucket_path": "<path-prefix>",
+    "keep_files_in_gcs-bucket": "Delete all tmp files from GCS"
+  }
+}
+```
+
+Set `keep_files_in_gcs-bucket` to `Keep all tmp files in GCS` if you want to retain temporary
+staging files after BigQuery load jobs complete.
 
 ## Changelog
 
@@ -252,8 +300,8 @@ This destination supports [namespaces](https://docs.airbyte.com/platform/using-a
 
 | Version     | Date       | Pull Request                                               | Subject                                                                                                                                                                           |
 |:------------|:-----------|:-----------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 3.0.19 | 2026-05-21 | [78239](https://github.com/airbytehq/airbyte/pull/78239) | Promoting release candidate 3.0.19-rc.1 to a main version. |
-| 3.0.19-rc.1 | 2026-05-19 | [78239](https://github.com/airbytehq/airbyte/pull/78239) | Upgrade CDK to 1.0.13. Progressive rollout. |
+| 3.0.19 | 2026-05-22 | [78333](https://github.com/airbytehq/airbyte/pull/78333) | Promoting release candidate 3.0.19-rc.1 to a main version. |
+| 3.0.19-rc.1 | 2026-05-20 | [78239](https://github.com/airbytehq/airbyte/pull/78239) | Upgrade CDK to 1.0.13. Progressive rollout. |
 | 3.0.18 | 2026-03-31 | [75913](https://github.com/airbytehq/airbyte/pull/75913) | Finalize upgrade BigQuery Cloud dependencies and CDK version |
 | 3.0.18-rc.1 | 2026-03-27 | [75541](https://github.com/airbytehq/airbyte/pull/75541) | Upgrade BigQuery Cloud dependencies and CDK version |
 | 3.0.17 | 2026-01-28 | [72427](https://github.com/airbytehq/airbyte/pull/72427) | Finalize upgrade CDK to 0.2.0 |
