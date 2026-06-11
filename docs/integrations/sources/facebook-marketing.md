@@ -256,6 +256,10 @@ To retrieve specific fields from Facebook Ads Insights combined with other break
 
 <FieldAnchor field="custom_insights.include_incrementality">
    12. (Optional) Toggle **Include Incrementality** to add the `incrementality` attribution window to this custom insight stream. When enabled, action metrics such as `actions`, `action_values`, and `cost_per_action_type` include an `incrementality` field. This setting applies only to this specific custom insight. For more details, see the global **Include Incrementality** setting described below.
+
+   :::caution
+   Do not enable this option on custom insights that use geographic breakdowns such as `dma` or `region`. Facebook cannot generate reports for that combination. See [Insights report generation failure](#insights-report-generation-failure).
+   :::
 </FieldAnchor>
 
 <FieldAnchor field="page_size">
@@ -272,6 +276,10 @@ To retrieve specific fields from Facebook Ads Insights combined with other break
 
 <FieldAnchor field="include_incrementality">
 13. (Optional) Toggle **Include Incrementality** to add the `incrementality` attribution window to all built-in Ads Insights streams. When enabled, the connector appends `"incrementality"` to the `action_attribution_windows` parameter sent to the Facebook API. Action metrics such as `actions`, `action_values`, and `cost_per_action_type` then include an `incrementality` field containing the incremental lift value attributed to the ad. This field is only populated for ad accounts that have active [Conversion Lift](https://developers.facebook.com/docs/marketing-api/guides/lift-studies/) studies configured in Facebook. For accounts without lift studies, the field is `null`. Disabled by default. For more details on the `incrementality` attribution window, refer to the [Ads Action Stats](https://developers.facebook.com/docs/marketing-api/reference/ads-action-stats/) API reference.
+
+   :::caution Incompatible with geographic breakdowns
+   Facebook cannot generate Insights reports that combine the `incrementality` attribution window with geographic breakdowns such as `dma` or `region`. If you enable **Include Incrementality** on an Ads Insights stream that uses one of these breakdowns, the sync will fail with a config error. To resolve this, either disable **Include Incrementality** for the affected stream, or remove the incompatible fields from the stream's schema. For more details, see [Insights report generation failure](#insights-report-generation-failure).
+   :::
 </FieldAnchor>
 
 14. Click **Set up source** and wait for the tests to complete.
@@ -420,6 +428,19 @@ If the `ad_creatives` stream fails with the error "Please reduce the amount of d
 
 Note that `ad_creatives_from_ads` is slower than `ad_creatives` because it makes individual API calls per creative. It also only returns creatives that are associated with ads — orphaned creatives that are not linked to any ad will not be included.
 
+### Insights report generation failure {#insights-report-generation-failure}
+
+If you see the error "Facebook could not generate the Insights report for stream '...' ... even at the smallest request size," this means Facebook's API cannot produce the requested report for a particular combination of breakdowns and fields.
+
+The most common trigger is enabling **Include Incrementality** on an Ads Insights stream that uses a geographic breakdown such as `dma` or `region`. Facebook does not compute incrementality for geographic breakdowns, and the async report fails even at single-ad, single-day, single-field granularity.
+
+To resolve this:
+
+1. **Disable "Include Incrementality"** for the affected stream. In **Custom Insights**, uncheck the **Include Incrementality** toggle for the specific insight. For built-in streams, disable the global **Include Incrementality** setting.
+2. **Remove the incompatible fields** from the stream's schema if you need to keep the incrementality window. Navigate to the connection's schema tab, select the affected stream, and deselect the fields named in the error message.
+
+This error is a Facebook-side limitation, not an Airbyte bug. The connector reports it as a config error because the resolution requires a configuration change.
+
 ### Missing records in Campaigns, Ad Sets, or Ads streams {#missing-records-status-filtering}
 
 If you notice that some campaigns, ad sets, or ads are missing from your synced data, the most common cause is the status filtering configuration.
@@ -484,8 +505,8 @@ Facebook’s Ads Insights API dynamically aggregates and filters metrics. Purcha
 
 | Version    | Date       | Pull Request                                             | Subject                                                                                                                                                                                                                                                                                           |
 |:-----------|:-----------|:---------------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 5.2.14 | 2026-06-10 | [79643](https://github.com/airbytehq/airbyte/pull/79643) | Replace the cryptic `system_error` on un-generatable Ads Insights reports with a clear, actionable `config_error` that names the offending stream/field/breakdown and how to resolve it (unselect the field, or disable the incrementality attribution window) (oncall #12088). |
-| 5.2.13 | 2026-05-31 | [78060](https://github.com/airbytehq/airbyte/pull/78060) | Fixed sync failures on Ads Insights breakdown streams caused by invalid field requests; cap async-job status-poll batches at Meta's 50-per-batch limit when a parent job has many children; tolerate malformed responses on the throttle-refresh ping instead of failing the whole sync. |
+| 5.2.14 | 2026-06-11 | [79643](https://github.com/airbytehq/airbyte/pull/79643) | Replace the cryptic `system_error` on un-generatable Ads Insights reports with a clear, actionable `config_error` that names the offending stream/field/breakdown and how to resolve it (unselect the field, or disable the incrementality attribution window). |
+| 5.2.13 | 2026-06-03 | [78060](https://github.com/airbytehq/airbyte/pull/78060) | Fixed sync failures on Ads Insights breakdown streams caused by invalid field requests; cap async-job status-poll batches at Meta's 50-per-batch limit when a parent job has many children; tolerate malformed responses on the throttle-refresh ping instead of failing the whole sync. |
 | 5.2.12 | 2026-05-27 | [78451](https://github.com/airbytehq/airbyte/pull/78451) | Promoted release candidate to GA |
 | 5.2.12-rc.1 | 2026-05-20 | [75457](https://github.com/airbytehq/airbyte/pull/75457) | Bump facebook-business SDK from v23 to v25 to support Marketing API v25.0 before v23.0 sunset on June 9, 2026 |
 | 5.2.11 | 2026-04-28 | [76977](https://github.com/airbytehq/airbyte/pull/76977) | Bump airbyte-cdk to ^7.17.4; facebook-business updated to 23.0.3 via lockfile refresh |
