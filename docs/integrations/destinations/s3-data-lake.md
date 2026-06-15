@@ -157,8 +157,17 @@ Enter the URI of your REST catalog. You may also need to enter the default names
             "s3:PutObject",
             "s3:PutObjectAcl",
             "s3:DeleteObject",
-            "s3:ListBucket*",
-            // highlight-start
+            "s3:ListBucket*"
+          ],
+          "Resource": [
+            "arn:aws:s3:::YOUR_BUCKET_NAME/*",
+            "arn:aws:s3:::YOUR_BUCKET_NAME"
+          ]
+        },
+        // highlight-start
+        {
+          "Effect": "Allow",
+          "Action": [
             "glue:TagResource",
             "glue:UnTagResource",
             "glue:BatchCreatePartition",
@@ -178,16 +187,21 @@ Enter the URI of your REST catalog. You may also need to enter the default names
             "glue:UpdateDatabase",
             "glue:UpdatePartition",
             "glue:UpdateTable"
-            // highlight-end
           ],
           "Resource": [
-            "arn:aws:s3:::YOUR_BUCKET_NAME/*",
-            "arn:aws:s3:::YOUR_BUCKET_NAME"
+            "arn:aws:glue:*:*:catalog",
+            "arn:aws:glue:*:*:database/*",
+            "arn:aws:glue:*:*:table/*/*"
           ]
         }
+        // highlight-end
       ]
     }
     ```
+
+   :::tip
+   To restrict the Glue permissions to a specific region and account, replace the `*` wildcards in the Glue resource ARNs with your AWS region and account ID (for example, `arn:aws:glue:us-east-1:123456789012:catalog`).
+   :::
 
 2. Set the **warehouse location** option to `s3://<bucket name>/path/within/bucket`.
 
@@ -395,12 +409,12 @@ This destination supports [namespaces](https://docs.airbyte.com/platform/using-a
 
 | Version     | Date       | Pull Request                                               | Subject                                                                                                                                                         |
 |:------------|:-----------|:-----------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 0.3.51      | 2026-06-10 | [79123](https://github.com/airbytehq/airbyte/pull/79123)   | Update Apacher Iceberg dependencies.                                                                                                                            |
-| 0.3.50      | 2026-06-03 |                                                            | Use unique staging branches and clean them up after each sync.                                                                                                  |
+| 0.3.51      | 2026-06-15 | [79123](https://github.com/airbytehq/airbyte/pull/79123)   | Update Apache Iceberg dependencies.                                                                                                                             |
+| 0.3.50      | 2026-06-08 | [79112](https://github.com/airbytehq/airbyte/pull/79112)   | Use unique staging branches and clean them up after each sync.                                                                                                  |
 | 0.3.49      | 2026-05-19 | [78232](https://github.com/airbytehq/airbyte/pull/78232)   | Upgrade CDK to 1.0.13                                                                                                                                           |
 | 0.3.48      | 2026-05-01 | [77677](https://github.com/airbytehq/airbyte/pull/77677)   | Add configurable flush batch size for aggregate publishing.                                                                                                     |
 | 0.3.47      | 2026-04-16 | [76410](https://github.com/airbytehq/airbyte/pull/76410)   | Upgrade CDK to 1.0.9.                                                                                                                                           |
-| 0.3.46      | 2026-03-30 |                                                            | Upgrade CDK to 1.0.7: fix sort order handling during schema evolution.                                                                                          |
+| 0.3.46      | 2026-03-30 | [75628](https://github.com/airbytehq/airbyte/pull/75628)   | Upgrade CDK to 1.0.7: fix sort order handling during schema evolution.                                                                                          |
 | 0.3.45      | 2026-03-12 | [74326](https://github.com/airbytehq/airbyte/pull/74326)   | Upgrade CDK to 1.0.5: Number-type primary keys are now stored as String (enabling dedup on numeric PKs); fix schema evolution when replacing identifier columns |
 | 0.3.44      | 2026-02-04 | [72848](https://github.com/airbytehq/airbyte/pull/72848)   | Enable Speed.                                                                                                                                                   |
 | 0.3.43      | 2026-01-29 | [72482](https://github.com/airbytehq/airbyte/pull/72482)   | Release on dataflow.                                                                                                                                            |
