@@ -275,23 +275,19 @@ Create a separate connection for streams which usually fail with error above "Fa
 
 ### Rate Limit issue for Report Streams
 
-Syncing Report Streams sometimes may fail due to rate limits.
+Report stream syncs can fail due to rate limits.
 
-The Amazon Seller Partner source connector makes requests according to the limits mentioned in the [SP API docs](https://developer-docs.amazon.com/sp-api/lang-pt_BR/docs/reports-api-rate-limits).
-But actual Rate Limits could be differ from ones mentioned in the docs. See [Usage Plans and Rate Limits](https://developer-docs.amazon.com/sp-api/docs/usage-plans-and-rate-limits) for more information.
-Depending on actual rate limits the Amazon Seller Partner source connector can receive "rate limited" responses, unfortunately there is no way to find actual rate limits values for account.
+The connector follows the rate limits documented in the [SP-API Reports API rate limits](https://developer-docs.amazon.com/sp-api/docs/reports-api-rate-limits), but actual limits may differ from the published values because Amazon uses [dynamic usage plans](https://developer-docs.amazon.com/sp-api/docs/usage-plans-and-rate-limits) that vary by seller account. There is no API to query your account's effective rate limits.
 
-We recommend next steps to overcome the rate limits issue:
+To reduce rate limit errors:
 
 1. **Enable report reuse** by setting **Max Done Report Age (Hours)** (`max_done_report_age_hours`) to a value between `1` and `72` (e.g., `24`). This is highly recommended if your connection faces rate limit issues. When enabled, the connector reuses recently completed reports instead of creating new ones, significantly reducing the number of `createReport` API calls and helping avoid both 429 rate limit errors and FATAL cooldown errors. This field is available in the connector UI.
 2. **Reduce 429 retry attempts** by lowering **Report Creation 429 Max Retries** (`creation_requester_429_max_retries`) from the default of `5`. Each retry uses exponential backoff, but repeated retries consume rate limit budget that could be used by other streams. Set this via the connector config API. Set to `0` to skip 429 retries entirely and let the next sync attempt the request instead.
 3. **Stop sync on rate limit** by enabling **Stop Sync When Report Streams Are Rate Limited** (`stop_sync_on_rate_limit`). When enabled, the source stops retrying immediately once the rate limit retry budget is exhausted and fails with an actionable configuration error. This is useful when persistent rate limiting indicates the connector configuration needs adjustment (such as reducing the number of report streams or increasing the sync interval).
 4. **Adjust the FATAL report retry wait time** by setting **Failed Report Retry Wait Time** (`failed_retry_wait_time_in_seconds`). When a report returns FATAL status due to Amazon's per-report-type cooldown, the connector defers retry for this duration. Default is `1800` (30 minutes). If rate-limited report creation triggers FATAL responses, increasing this value gives Amazon more time to clear the cooldown. For daily FBA reports, set to `14400` (4 hours). Set this via the connector config API.
-5. Depending on your amount of data per [Period In Days](https://docs.airbyte.com/integrations/sources/amazon-seller-partner#reference) adjust this value to reduce time of processing the report on API Side. If creation of the report takes more than 1 hour it's recommended to set lower value for `Period In Days` setting.
-6. Configure affected Report Stream to read data incrementally, use Incremental Sync mode (Append). This will prevent the source of rereading already fetched data and make the source to read new data starting from state cursor value. See [Incremental Sync Mode - Append](https://docs.airbyte.com/platform/using-airbyte/core-concepts/sync-modes/incremental-append) for more information.
-7. Set syncs to run every 24 hours.
-
-This configuration will sync partial data, until the source gets rate limited. Once state value reaches date that equal the date of sync, next sync will have only one partition(date period for report). The source will make only one request for affected report which should be enough to avoid rate limits issue.
+5. **Reduce report period size** by lowering **Period In Days** if report creation takes more than one hour. Smaller date ranges produce faster reports and reduce time spent holding rate limit tokens.
+6. **Use incremental sync mode** (Append) for affected report streams. This prevents re-reading already-synced data. See [Incremental Sync - Append](https://docs.airbyte.com/platform/using-airbyte/core-concepts/sync-modes/incremental-append) for details.
+7. **Increase sync interval** to 24 hours to allow rate limit tokens to recover between runs.
 
 ### Reports failing with FATAL status
 
@@ -304,7 +300,7 @@ The cooldown applies per seller, per report type, across all applications. Even 
 
 The connector handles this automatically by deferring retry of FATAL reports. When a report fails with FATAL status, the connector waits the configured cooldown period before retrying, allowing other report streams to continue processing in the meantime.
 
-**Tuning options** (set via connector config API, hidden from UI):
+**Tuning options:**
 
 - **Failed Report Retry Wait Time** (`failed_retry_wait_time_in_seconds`): Time in seconds to wait before retrying a FATAL report. Default is `1800` (30 minutes), which covers the most common cooldown. Range: `1`–`14400`. Increase this value to `14400` (4 hours) if you see repeated FATAL errors on daily FBA reports.
 - **Max Done Report Age (Hours)** (`max_done_report_age_hours`): When set to a value between `1` and `72`, the connector reuses recently completed reports instead of creating new ones, reducing the chance of triggering the cooldown in the first place.
@@ -315,7 +311,7 @@ When the connector creates report requests, the Amazon SP-API may return HTTP 42
 
 **Tuning options:**
 
-- **Report Creation 429 Max Retries** (`creation_requester_429_max_retries`, hidden from UI): Maximum number of retry attempts for 429 errors during report creation. Default is `5`. Reduce this value to avoid exhausting rate limits on retrying requests. Set to `0` to disable 429 retries entirely. Set this via the connector config API.
+- **Report Creation 429 Max Retries** (`creation_requester_429_max_retries`): Maximum number of retry attempts for 429 errors during report creation. Default is `5`. Reduce this value to avoid exhausting rate limits on retrying requests. Set to `0` to disable 429 retries entirely.
 - **Max Done Report Age (Hours)** (`max_done_report_age_hours`, available in the UI): When set to a value between `1` and `72`, the connector reuses recently completed reports instead of creating new ones. This reduces the number of `createReport` API calls and helps avoid hitting rate limits.
 
 ### ListFinancialEvents stream incompatible with deduplication on BigQuery
@@ -362,7 +358,7 @@ If you use Airbyte Cloud and your organization restricts access to specific IPs,
 
 | Version    | Date       | Pull Request                                              | Subject                                                                                                                                                                             |
 |:-----------|:-----------|:----------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 5.7.8 | 2026-06-11 | [79673](https://github.com/airbytehq/airbyte/pull/79673) | Surface rate limit exhaustion on report creation as a config error with troubleshooting guidance |
+| 5.7.8 | 2026-06-16 | [79673](https://github.com/airbytehq/airbyte/pull/79673) | Add configurable `stop_sync_on_rate_limit` for report creation; increase max report reuse age to 72 hours |
 | 5.7.7 | 2026-05-21 | [78321](https://github.com/airbytehq/airbyte/pull/78321) | Add configurable hourly lookback window for incremental report streams except monthly sales-and-traffic and date-only vendor sales reports |
 | 5.7.6 | 2026-05-20 | [78285](https://github.com/airbytehq/airbyte/pull/78285) | Promoted release candidate to GA |
 | 5.7.6-rc.4 | 2026-05-13 | [78037](https://github.com/airbytehq/airbyte/pull/78037) | Make failed report retry wait time and report creation 429 max retries visible in the source configuration |
