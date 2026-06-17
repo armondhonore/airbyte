@@ -405,7 +405,7 @@ test!
 | `float`                                                 | number                  |       |
 | `geography`                                             | string                  |       |
 | `geometry`                                              | string                  |       |
-| `hierarchyid`                                           | string                  | Not supported in CDC mode. |
+| `hierarchyid`                                           | string                  | Non-CDC only. |
 | `money`                                                 | number                  |       |
 | `numeric`                                               | number                  |       |
 | `ntext`                                                 | string                  |       |
