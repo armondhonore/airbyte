@@ -1,0 +1,12 @@
+application:
+  name: airbyte
+  pods:
+  - name: app
+    image: airbyte/webapp:latest
+    path: /
+    servicePorts:
+    - 8080
+    vars:
+      TRACKING_STRATEGY: segment
+      API_URL: "/api/v1/"
+      INTERNAL_API_HOST: "server.pod:8001"
