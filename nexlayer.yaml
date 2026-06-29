@@ -2,11 +2,7 @@ application:
   name: airbyte
   pods:
   - name: app
-    image: mirror.gcr.io/airbyte/webapp:latest
+    image: airbyte/webapp:1.7.8
     path: /
     servicePorts:
     - 8080
-    vars:
-      TRACKING_STRATEGY: segment
-      API_URL: "/api/v1/"
-      INTERNAL_API_HOST: "server.pod:8001"
