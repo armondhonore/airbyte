@@ -2,7 +2,7 @@ application:
   name: airbyte
   pods:
   - name: app
-    image: airbyte/webapp:latest
+    image: mirror.gcr.io/airbyte/webapp:latest
     path: /
     servicePorts:
     - 8080
