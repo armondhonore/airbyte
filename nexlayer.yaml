@@ -1,12 +1,79 @@
 application:
   name: airbyte
   pods:
-  - name: app
-    image: airbyte/webapp:1.7.8
+  - name: airbyte-postgres
+    image: mirror.gcr.io/library/postgres:13-alpine
+    servicePorts:
+    - 5432
+    vars:
+    - key: POSTGRES_DB
+      value: airbyte
+    - key: POSTGRES_USER
+      value: airbyte
+    - key: POSTGRES_PASSWORD
+      value: airbyte
+
+  - name: airbyte-temporal
+    image: mirror.gcr.io/temporalio/auto-setup:1.27
+    servicePorts:
+    - 7233
+    vars:
+    - key: DB
+      value: postgresql
+    - key: DB_PORT
+      value: "5432"
+    - key: POSTGRES_USER
+      value: airbyte
+    - key: POSTGRES_PWD
+      value: airbyte
+    - key: POSTGRES_SEEDS
+      value: airbyte-postgres.pod
+    - key: DYNAMIC_CONFIG_FILE_PATH
+      value: config/dynamicconfig/development.yaml
+
+  - name: airbyte-server
+    image: mirror.gcr.io/airbyte/server:1.7.8
+    servicePorts:
+    - 8001
+    vars:
+    - key: DATABASE_URL
+      value: jdbc:postgresql://airbyte-postgres.pod:5432/airbyte
+    - key: DATABASE_USER
+      value: airbyte
+    - key: DATABASE_PASSWORD
+      value: airbyte
+    - key: TEMPORAL_HOST
+      value: airbyte-temporal.pod:7233
+    - key: WEBAPP_URL
+      value: https://relaxed-weasel-airbyte.cloud.nexlayer.ai
+    - key: SERVER_HOST
+      value: airbyte-server.pod
+    - key: LOG_LEVEL
+      value: INFO
+    - key: WORKSPACE_ROOT
+      value: /tmp/workspace
+    - key: CONFIG_ROOT
+      value: /tmp/configs
+    - key: TRACKING_STRATEGY
+      value: logging
+
+  - name: airbyte-webapp
+    image: mirror.gcr.io/airbyte/webapp:1.7.8
     path: /
     servicePorts:
-    - 8080
+    - 80
     vars:
-      AIRBYTE_SERVER_HOST: "app.pod:8080"
-      CONNECTOR_BUILDER_API_HOST: "app.pod:8080"
-      KEYCLOAK_INTERNAL_HOST: "app.pod:8080"
+    - key: AIRBYTE_VERSION
+      value: 1.7.8
+    - key: API_URL
+      value: https://relaxed-weasel-airbyte.cloud.nexlayer.ai/api/v1/
+    - key: INTERNAL_API_HOST
+      value: airbyte-server.pod:8001
+    - key: IS_DEMO
+      value: "true"
+    - key: AIRBYTE_SERVER_HOST
+      value: airbyte-server.pod:8001
+    - key: CONNECTOR_BUILDER_API_HOST
+      value: airbyte-server.pod:8001
+    - key: KEYCLOAK_INTERNAL_HOST
+      value: airbyte-server.pod:8001
